@@ -1,0 +1,11 @@
+{
+  "day": "2026-10-06",
+  "batches": [
+    {"id": "a", "station": "upstream", "rows": [["A", 7]]},
+    {"id": "bm", "station": "downstream", "rows": [["B", 11], ["M", null]]},
+    {"id": "c", "station": "upstream", "rows": [["C", 5]]}
+  ],
+  "initial_batches": ["a", "bm"],
+  "session": "night",
+  "amendments": [["correct", 2, 13], ["move", 1, 2], ["insert", 1, ["upstream", "c", 1]]]
+}
