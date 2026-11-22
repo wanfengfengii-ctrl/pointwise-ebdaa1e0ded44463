@@ -122,4 +122,60 @@ CREATE TABLE IF NOT EXISTS delivered_rows (
     FOREIGN KEY (edition_id, position) REFERENCES edition_rows (edition_id, position)
 );
 
+-- Merge-capable drafts are those fixed-parent drafts created after this schema
+-- (and therefore the merge feature) was installed.  Drafts from older databases
+-- stay absent and remain usable only through the ordinary single-draft routes.
+CREATE TABLE IF NOT EXISTS merge_capable_drafts (
+    draft_id INTEGER NOT NULL PRIMARY KEY REFERENCES drafts (draft_id)
+);
+
+-- One successful non-empty edit advances the revision, even if it restores the
+-- previous contents.  Empty edit groups and rejected groups leave it alone.
+CREATE TABLE IF NOT EXISTS draft_revisions (
+    draft_id INTEGER NOT NULL PRIMARY KEY REFERENCES drafts (draft_id),
+    revision INTEGER NOT NULL CHECK (revision > 0)
+);
+
+-- Original rows explicitly moved (by a non-trivial move) in a draft, keyed by
+-- the shared parent position of the row that was moved at edit time.
+CREATE TABLE IF NOT EXISTS draft_moved_originals (
+    draft_id INTEGER NOT NULL REFERENCES drafts (draft_id),
+    parent_position INTEGER NOT NULL CHECK (parent_position > 0),
+    PRIMARY KEY (draft_id, parent_position)
+);
+
+CREATE TABLE IF NOT EXISTS merge_previews (
+    preview_id INTEGER PRIMARY KEY,
+    day TEXT NOT NULL,
+    parent_id INTEGER NOT NULL,
+    left_id INTEGER NOT NULL,
+    right_id INTEGER NOT NULL,
+    left_revision INTEGER NOT NULL,
+    right_revision INTEGER NOT NULL,
+    FOREIGN KEY (parent_id, day) REFERENCES editions (edition_id, day),
+    FOREIGN KEY (left_id) REFERENCES drafts (draft_id),
+    FOREIGN KEY (right_id) REFERENCES drafts (draft_id)
+);
+
+CREATE TABLE IF NOT EXISTS merge_preview_rows (
+    preview_id INTEGER NOT NULL REFERENCES merge_previews (preview_id),
+    position INTEGER NOT NULL CHECK (position > 0),
+    label TEXT NOT NULL,
+    liters TEXT,
+    station TEXT NOT NULL,
+    source_batch TEXT NOT NULL,
+    source_position INTEGER NOT NULL,
+    parent_position INTEGER CHECK (parent_position > 0),
+    PRIMARY KEY (preview_id, position),
+    FOREIGN KEY (source_batch, station) REFERENCES source_batches (batch_id, station),
+    FOREIGN KEY (source_batch, source_position) REFERENCES source_rows (batch_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS merge_receipts (
+    request_id TEXT NOT NULL PRIMARY KEY,
+    preview_id INTEGER NOT NULL REFERENCES merge_previews (preview_id),
+    edition_id INTEGER NOT NULL UNIQUE REFERENCES editions (edition_id),
+    token TEXT NOT NULL UNIQUE
+);
+
 COMMIT;

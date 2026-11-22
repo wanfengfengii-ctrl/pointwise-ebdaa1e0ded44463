@@ -9,6 +9,9 @@ from warehouse.publication.editions import EditionRow, load_edition, store_editi
 from warehouse.publication.receipts import (
     PublicationReceipt, issue_publication_receipt, load_publication_receipt, store_publication_receipt,
 )
+from warehouse.publication.merge import MergeReceipt, confirm_merge
+
+__all__ = ['PublicationReceipt', 'MergeReceipt', 'confirm_merge', 'publish_day']
 
 
 def publish_day(

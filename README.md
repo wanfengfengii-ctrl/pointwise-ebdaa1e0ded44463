@@ -60,6 +60,8 @@ with sqlite3.connect('warehouse.sqlite3', isolation_level=None) as db:
 | `warehouse.reconcile.comparison` | `compare_days(db, before_id, after_id)` 返回两份指定同日账单，附分站及整版的后版减前版差值。|
 | `warehouse.delivery.sessions` | `open_export(db, session_id, day)` 持久绑定会话和日期，同参复开保留进度，同号换日拒绝。|
 | `warehouse.delivery.paging` | `take_page(db, session_id, page_no, page_size)` 返回 `SuccessfulPage`，含版号、页号、请求大小、原序实发明细、整数升小计和回执。同参复领取原页，页号从 1 起连续，大小为正整数。|
+| `warehouse.drafts.merge` | `preview_merge(db, left_id, right_id)` 预览同父两稿的合版，返回 `{'preview_id', 'rows', 'conflict'}`。成功时 `rows` 按拟发布行序排列，`DraftRow` 的 `parent_position` 保留父版一基行位，补登为 `None`。业务冲突时 `preview_id` 为 `None`、`rows` 为空，`conflict` 给出 `kind` 与 `refs`。|
+| `warehouse.publication.publish` | `confirm_merge(db, preview_id, request_id, *, before_commit=None)` 确认预览，返回具名 `request_id`、`preview_id`、`edition_id`、`token` 的回执。首次确认要求两稿自预览后未成功做过非空编辑且父版仍现行；同请求号同预览重投返回原回执。`publish_day` 的说明见上。|
 
 `None` 表示显式缺测。每行计入行数，缺测另计并贡献 0 L，有效的 0 L 不增加缺测数。有效读值允许有符号整数；布尔值、浮点和数字字符串都拒收。统计按精确整数升计算，分站结果按站名排序。两版对照按站并集计算，缺站在差值中取零。全缺测页和空页的小计都是 0 L，原明细可区分。
 

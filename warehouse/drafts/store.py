@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from collections.abc import Iterable
 from sqlite3 import Connection
 
 from warehouse.drafts.ancestry import DraftBase
@@ -48,6 +49,7 @@ def insert_draft(db: Connection, base: DraftBase, rows: tuple[DraftRow, ...]) ->
     draft_id = db.execute(
         'INSERT INTO drafts (day, parent_id) VALUES (?, ?)', (base.day, base.parent_id),
     ).lastrowid
+    db.execute('INSERT INTO merge_capable_drafts (draft_id) VALUES (?)', (draft_id,))
     db.executemany(
         'INSERT INTO draft_inputs (draft_id, position, batch_id) VALUES (?, ?, ?)',
         ((draft_id, position, batch_id) for position, batch_id in enumerate(base.batch_ids, 1)),
@@ -60,6 +62,34 @@ def insert_draft(db: Connection, base: DraftBase, rows: tuple[DraftRow, ...]) ->
 def replace_draft(db: Connection, draft: WorkingDay) -> None:
     db.execute('DELETE FROM draft_rows WHERE draft_id = ?', (draft.draft_id,))
     _store_rows(db, draft)
+
+
+def draft_revision(db: Connection, draft_id: int) -> int:
+    row = db.execute('SELECT revision FROM draft_revisions WHERE draft_id = ?', (draft_id,)).fetchone()
+    return 0 if row is None else row[0]
+
+
+def bump_draft_revision(db: Connection, draft_id: int) -> None:
+    db.execute(
+        '''INSERT INTO draft_revisions (draft_id, revision) VALUES (?, 1)
+           ON CONFLICT(draft_id) DO UPDATE SET revision = revision + 1''',
+        (draft_id,),
+    )
+
+
+def moved_originals(db: Connection, draft_id: int) -> frozenset[int]:
+    return frozenset(
+        position for (position,) in db.execute(
+            'SELECT parent_position FROM draft_moved_originals WHERE draft_id = ?', (draft_id,),
+        )
+    )
+
+
+def note_moved_originals(db: Connection, draft_id: int, parent_positions: Iterable[int]) -> None:
+    db.executemany(
+        'INSERT OR IGNORE INTO draft_moved_originals (draft_id, parent_position) VALUES (?, ?)',
+        ((draft_id, position) for position in parent_positions),
+    )
 
 
 def _store_rows(db: Connection, draft: WorkingDay) -> None:
